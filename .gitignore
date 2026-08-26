@@ -9,3 +9,7 @@ superlink.log*
 # Speaking notes: kept in git, excluded from `flwr app publish` (which filters
 # the upload by .gitignore). Already-tracked files stay tracked.
 DEMO.md
+
+# Ledgers and tamper copies are run artifacts. Also keeps them out of
+# `flwr app publish`, which otherwise uploads *.jsonl.
+*.jsonl
