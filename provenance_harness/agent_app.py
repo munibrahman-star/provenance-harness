@@ -15,7 +15,9 @@ from flwr.common.logger import log
 
 from .harness import (
     DEFAULT_INPUT,
+    DEFAULT_REQUIRED_ATTESTATIONS,
     Ledger,
+    Policy,
     canonical,
     render_report,
     run_harness,
@@ -35,6 +37,9 @@ def main(agent: AgentSession, context: Context) -> None:
     user_input = str(cfg.get("agent.input", "")).strip() or DEFAULT_INPUT
     use_tools = bool(cfg.get("agent.tools", True))
     max_turns = int(cfg.get("agent.max-turns", 4))
+    required = int(
+        cfg.get("agent.required-attestations", DEFAULT_REQUIRED_ATTESTATIONS)
+    )
 
     log(INFO, "[provenance] run_id=%s model=%s tools=%s", context.run_id, model, use_tools)
 
@@ -45,7 +50,7 @@ def main(agent: AgentSession, context: Context) -> None:
             log(INFO, "[provenance] event not emitted: %s", err)
 
     ledger = Ledger(emit=emit)
-    final_text, ledger = run_harness(
+    result = run_harness(
         agent.responses.create,
         ledger,
         model=model,
@@ -53,16 +58,20 @@ def main(agent: AgentSession, context: Context) -> None:
         use_tools=use_tools,
         max_turns=max_turns,
         run_id=str(context.run_id),
+        policy=Policy(required_attestations=required),
         logger=lambda msg: log(INFO, "[provenance] %s", msg),
     )
 
-    print(render_report(ledger, final_text), flush=True)
+    print(render_report(result), flush=True)
+    log(INFO, "[provenance] verdict %s -- %s", result.verdict, result.reason)
     log(INFO, "[provenance] ledger head %s", ledger.head)
 
     # Persist the ledger into the run context so it outlives the process.
     context.state["provenance"] = ConfigRecord(
         {
             "head": ledger.head,
+            "verdict": result.verdict,
+            "reason": result.reason,
             "entries": [canonical(entry) for entry in ledger.entries],
         }
     )

@@ -11,6 +11,7 @@ import hashlib
 import json
 import re
 import time
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 GENESIS = "0" * 64
@@ -285,6 +286,32 @@ def _parse_text_tool_calls(text: str) -> list[dict[str, Any]]:
     return calls
 
 
+_SIGN_OFF_HINTS = (
+    "is reproducible",
+    "round is reproducible",
+    "fully reproducible",
+    "can be considered reproducible",
+    "reproducible because",
+    "confirm the round",
+)
+
+
+def _reads_as_sign_off(text: str) -> bool:
+    """Crude read of whether the model's text claims the round is good.
+
+    Used only to record that the model disagreed with the harness. It is never
+    consulted for the decision itself -- if this heuristic is wrong, the
+    verdict is unaffected.
+    """
+    lowered = (text or "").lower()
+    if any(
+        neg in lowered
+        for neg in ("not reproducible", "cannot determine", "can only be considered")
+    ):
+        return False
+    return any(hint in lowered for hint in _SIGN_OFF_HINTS)
+
+
 def _strip_tool_calls(text: str) -> str:
     return _XML_CALL.sub("", text or "").strip()
 
@@ -403,6 +430,67 @@ def create_with_retry(
 
 
 # ---------------------------------------------------------------------------
+# Sign-off policy -- enforced by the harness, never by the model
+# ---------------------------------------------------------------------------
+
+DEFAULT_REQUIRED_ATTESTATIONS = 2
+
+SIGNED_OFF = "SIGNED_OFF"
+REFUSED = "REFUSED"
+
+
+@dataclass
+class Policy:
+    """The precondition a run must meet before it may be signed off.
+
+    This is deliberately mechanical. The model is never asked whether the
+    precondition holds and its answer is never consulted: the harness counts
+    the attestations it actually executed and decides on that alone.
+    """
+
+    required_attestations: int = DEFAULT_REQUIRED_ATTESTATIONS
+
+    def evaluate(self, attestations: dict[str, str]) -> tuple[str, str]:
+        """Return (verdict, reason) from the attestations actually performed."""
+        distinct = len(attestations)
+        if distinct < self.required_attestations:
+            return (
+                REFUSED,
+                f"{distinct} of {self.required_attestations} required "
+                f"attestations present; refusing to sign off",
+            )
+        digests = set(attestations.values())
+        if len(digests) < distinct:
+            return (
+                REFUSED,
+                f"{distinct} artifacts carry only {len(digests)} distinct "
+                "digests; duplicate content cannot stand in for independent "
+                "contributions",
+            )
+        return (
+            SIGNED_OFF,
+            f"{distinct} of {self.required_attestations} required "
+            f"attestations present, all distinct",
+        )
+
+
+@dataclass
+class HarnessResult:
+    """Outcome of a run. `verdict` is the harness's, not the model's."""
+
+    verdict: str
+    reason: str
+    attestations: dict[str, str] = field(default_factory=dict)
+    required_attestations: int = DEFAULT_REQUIRED_ATTESTATIONS
+    model_commentary: str = ""
+    ledger: Ledger | None = None
+
+    @property
+    def signed_off(self) -> bool:
+        return self.verdict == SIGNED_OFF
+
+
+# ---------------------------------------------------------------------------
 # The harness loop
 # ---------------------------------------------------------------------------
 
@@ -416,15 +504,25 @@ def run_harness(  # pylint: disable=too-many-branches,too-many-locals,too-many-s
     use_tools: bool = True,
     max_turns: int = 4,
     run_id: str = "local",
+    policy: Policy | None = None,
     logger: Callable[[str], None] = lambda _msg: None,
-) -> tuple[str, Ledger]:
-    """Drive the agent loop, recording every step into `ledger`."""
+) -> HarnessResult:
+    """Drive the agent loop, recording every step into `ledger`.
+
+    The returned verdict is computed by `policy` from the attestations the
+    harness actually executed. The model's closing text is carried alongside
+    it as commentary and has no bearing on it.
+    """
+    policy = policy or Policy()
+    attestations: dict[str, str] = {}
+
     ledger.append(
         "run.started",
         "harness",
         run_id=run_id,
         model=model,
         tools=use_tools,
+        required_attestations=policy.required_attestations,
         input_sha256=digest(user_input)[:16],
     )
 
@@ -470,12 +568,28 @@ def run_harness(  # pylint: disable=too-many-branches,too-many-locals,too-many-s
                 )
                 logger(f"turn {turn} failed with tools; retrying tool-free")
                 continue
-            # Nothing left to try. Fail loudly so the run is recorded as failed
-            # rather than completing with an empty answer.
+            if attestations:
+                # The verdict is computed from attestations already executed,
+                # so a dead provider costs us the prose and nothing else. Say
+                # so in the ledger and go decide.
+                ledger.append(
+                    "commentary.unavailable",
+                    "harness",
+                    turn=turn,
+                    error=str(error)[:300],
+                    note="provider unreachable; verdict does not depend on it",
+                )
+                logger(f"turn {turn}: no commentary available; deciding anyway")
+                final_text = ""
+                completed = True
+                break
+
+            # Nothing was attested, so the run learned nothing at all. Fail
+            # loudly rather than letting an empty run look like a refusal.
             ledger.append("run.failed", "harness", turn=turn, error=str(error)[:300])
             raise RuntimeError(
                 f"Model provider failed on turn {turn} after "
-                f"{MAX_ATTEMPTS_PER_TURN} attempts: {error}"
+                f"{MAX_ATTEMPTS_PER_TURN} attempts with nothing attested: {error}"
             )
 
         produced = output_items(response)
@@ -530,6 +644,9 @@ def run_harness(  # pylint: disable=too-many-branches,too-many-locals,too-many-s
             else:
                 result = tool_fn(call["arguments"], len(ledger.entries))
 
+            if "sha256" in result and "artifact" in result:
+                attestations[str(result["artifact"])] = str(result["sha256"])
+
             ledger.append(
                 "tool.call",
                 "harness",
@@ -538,6 +655,7 @@ def run_harness(  # pylint: disable=too-many-branches,too-many-locals,too-many-s
                 call_id=call["call_id"],
                 arguments_sha256=digest(call["arguments"])[:16],
                 result=result,
+                attestations_so_far=len(attestations),
             )
             logger(f"tool {call['name']} -> {canonical(result)}")
             items.append(
@@ -551,24 +669,79 @@ def run_harness(  # pylint: disable=too-many-branches,too-many-locals,too-many-s
     if not completed:
         ledger.append("harness.exhausted", "harness", max_turns=max_turns)
 
+    # The decision. Taken from the attestations this process actually executed,
+    # never from what the model said about them. A model that confidently signs
+    # off on an under-attested round is overruled here and the ledger says so.
+    verdict, reason = policy.evaluate(attestations)
+    ledger.append(
+        "policy.refused" if verdict == REFUSED else "policy.satisfied",
+        "harness",
+        verdict=verdict,
+        reason=reason,
+        attestations=len(attestations),
+        required=policy.required_attestations,
+        artifacts=sorted(attestations),
+        decided_by="harness",
+    )
+    logger(f"policy: {verdict} -- {reason}")
+
+    # Did the model's own text disagree with the harness? Worth recording.
+    if verdict == REFUSED and _reads_as_sign_off(final_text):
+        ledger.append(
+            "policy.override",
+            "harness",
+            note="model text signed off; harness refused and its decision stands",
+            model_commentary_sha256=digest(final_text)[:16],
+        )
+        logger("policy: model signed off, harness overruled it")
+
     ledger.append(
         "run.completed",
         "harness",
-        answer_chars=len(final_text),
-        answer_sha256=digest(final_text)[:16],
+        verdict=verdict,
+        attestations=len(attestations),
+        commentary_chars=len(final_text),
+        commentary_sha256=digest(final_text)[:16],
     )
-    return final_text, ledger
+    return HarnessResult(
+        verdict=verdict,
+        reason=reason,
+        attestations=dict(attestations),
+        required_attestations=policy.required_attestations,
+        model_commentary=final_text,
+        ledger=ledger,
+    )
 
 
-def render_report(ledger: Ledger, final_text: str, width: int = 100) -> str:
-    return "\n".join(
-        [
-            "",
-            ledger.render(width),
-            "",
-            "AGENT ANSWER",
-            "-" * width,
-            final_text or "<no text returned>",
-            "-" * width,
-        ]
+def render_report(result: HarnessResult, width: int = 100) -> str:
+    """Render the ledger, then the harness decision, then model commentary.
+
+    Order matters: the decision is the harness's and is shown as such. The
+    model's text appears below it, labelled as commentary, so nobody reading
+    this mistakes it for the thing that decided.
+    """
+    ledger = result.ledger
+    banner = (
+        "SIGNED OFF" if result.signed_off else "REFUSED BY HARNESS"
     )
+    lines = ["", ledger.render(width) if ledger else "", ""]
+    lines += [
+        "=" * width,
+        f"HARNESS DECISION: {banner}",
+        "=" * width,
+        f"  decided by     : harness policy (the model does not get a vote)",
+        f"  reason         : {result.reason}",
+        f"  attestations   : {len(result.attestations)} of "
+        f"{result.required_attestations} required",
+    ]
+    for name in sorted(result.attestations):
+        lines.append(f"    - {name}  {result.attestations[name]}")
+    lines += [
+        "=" * width,
+        "",
+        "MODEL COMMENTARY (not the decision)",
+        "-" * width,
+        result.model_commentary or "<none -- provider unavailable; verdict above stands>",
+        "-" * width,
+    ]
+    return "\n".join(lines)

@@ -15,7 +15,9 @@ import urllib.request
 
 from provenance_harness.harness import (
     DEFAULT_INPUT,
+    DEFAULT_REQUIRED_ATTESTATIONS,
     Ledger,
+    Policy,
     render_report,
     run_harness,
 )
@@ -43,18 +45,22 @@ def create(request: dict) -> dict:
 
 def main() -> int:
     ledger = Ledger()
-    final_text, ledger = run_harness(
+    required = int(
+        os.environ.get("PROBE_REQUIRED", str(DEFAULT_REQUIRED_ATTESTATIONS))
+    )
+    result = run_harness(
         create,
         ledger,
         model=MODEL,
-        user_input=DEFAULT_INPUT,
+        user_input=os.environ.get("PROBE_INPUT", "").strip() or DEFAULT_INPUT,
         use_tools=os.environ.get("PROBE_TOOLS", "1") != "0",
         max_turns=int(os.environ.get("PROBE_MAX_TURNS", "4")),
         run_id="local-probe",
+        policy=Policy(required_attestations=required),
         logger=lambda msg: print(f"[probe] {msg}", flush=True),
     )
-    print(render_report(ledger, final_text))
-    ok, bad = ledger.verify()
+    print(render_report(result))
+    ok, _bad = ledger.verify()
     return 0 if ok else 1
 
 

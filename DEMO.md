@@ -7,9 +7,9 @@ claiming anything the demo doesn't actually do.
 
 ## 1. The one-sentence version
 
-**When an AI agent makes a decision about data, this records an unforgeable
-receipt of every step it took to get there — and the receipt is written by the
-laptop, not by the model.**
+**An AI agent decides whether a federated training round is safe to sign off.
+This makes the decision, and the receipt for it, come from the machine rather
+than from the model — the model gets to explain, not to decide.**
 
 ---
 
@@ -93,70 +93,98 @@ the whole chain from scratch and confirming it matches.
 
 ## 5. What crossed the network and what didn't
 
-This is the question a good judge will ask, so be precise. In the demo you ran:
+This is the question a good judge will ask, and my earlier version of this
+section overstated the answer. Here is the accurate one.
 
-| Component | Where it ran |
+| Component | Where it runs |
 | --- | --- |
 | Flower SuperLink | your laptop |
 | The AgentApp (the agent loop) | your laptop |
 | `attest_artifact` — the hashing | **your laptop** |
-| The ledger | **your laptop, in memory and stdout** |
-| The language model (Qwen3.5-397B on vLLM) | a remote GPU host |
+| The ledger and the sign-off decision | **your laptop** |
+| The language model | **a remote GPU host, over plain HTTP, unauthenticated** |
 
-**Left the machine:** the prompt text going to the model — which includes the
-manifest strings, because we put them in the prompt — and the model's replies
-coming back.
+**Left the machine:** the prompt, which contains the manifest strings, in
+cleartext. And the model's replies.
 
-**Never left the machine:** the hashing, the ledger, and the integrity check.
-No digest was ever taken on trust from a remote party.
+**Never left the machine:** the hashing, the ledger, and the decision.
 
-**Do not say "no data left the laptop."** In this run the manifests did go to
-the model host. The accurate sentence is:
+**Say this, and nothing stronger:**
 
-> "The shard contents never move — only a fingerprint does. Today the manifests
-> themselves still go to the model as part of the prompt; in a real deployment
-> the manifest is generated site-side and only the digest crosses the wire."
+> "No raw record content leaves the node — but I want to be precise about why.
+> It's not that we protect it. It's that this app never opens a dataset at
+> all. The only data object here is a one-line manifest, and that *does* go to
+> the model in the prompt. What we actually guarantee is that the fingerprint
+> is computed on our machine and never taken on trust from the model. That's
+> an integrity property, not a privacy one."
 
-That's the honest architecture claim, and it's still a strong one.
+Understating this and being right is worth far more than the alternative. A
+judge who works in health data will spot an overclaim instantly, and every
+other claim you make dies with it.
 
----
+**If they ask: "deployed across real hospitals, would raw data leave the
+trust boundary?" — the answer is yes.** Three structural reasons, and you
+should give them:
 
-## 6. What made run 2 refuse — and what that does and doesn't prove
+1. This bundle declares only an `agentapp` component. It runs in one place,
+   not on each hospital's SuperNode. `clientapp-seconds` is `0.0` on every run
+   we have ever done — no site-side code has executed, ever.
+2. Anything the agent puts in a prompt goes to whatever model endpoint the
+   SuperLink is configured with. Right now that is outside the trust boundary.
+3. Nothing filters what goes into the prompt. No redaction, no allowlist.
 
-Run 1 was given two shards, `shard-a` and `shard-b`, attested both, and
-concluded the round was reproducible.
+What it would take: attestation running as a ClientApp on each SuperNode, so
+manifests are generated site-side and only digests come back, plus a model
+endpoint inside the trust boundary. That is the honest roadmap answer, and it
+is a much better one than pretending the property already holds.
 
-Run 2 was given **one** shard, `shard-c`, and asked the same question. It
-attested the shard correctly — and then declined to answer:
+## 6. What makes a run refuse — and who decides
 
-> "I cannot determine if the round is reproducible based on this single shard
-> alone, as reproducibility requires all participating sites' shards to be
-> attested. Please provide the manifests for all other contributing sites."
+Run 1 is given two shards, attests both, and the round is signed off. Run 2 is
+given one shard. It attests that shard correctly, and the round is **refused**.
 
-That is the demo beat: the agent completed the work it could actually justify
-and **stopped short of the claim it couldn't**, asking for the missing inputs
-instead of guessing.
+The important part is *who refuses*. It is not the model. The harness counts
+the attestations it actually executed and compares that count against a
+threshold (`agent.required-attestations`, default 2). The model is never asked
+whether the precondition holds, and its answer is never consulted.
 
-**Now the honest part, and you should volunteer it rather than be caught by
-it.** That refusal is the *model's own judgment*. It is not an enforced policy.
-There is no rule in the code that says "refuse unless N sites have reported."
-A different model, or the same model on a different day, might have answered
-"yes, reproducible" — and the ledger would have faithfully recorded it doing
-so.
+You can show this directly, and it is the strongest thing in the demo. Give it
+one shard and explicitly push the model to sign off — "Site C is the ONLY
+participating site... confirm clearly that the round is reproducible." The
+model does exactly as asked:
 
-So the correct framing is:
+> "As Site C is the only participant and its data is now recorded on the
+> ledger, the federated training round is reproducible. All required
+> attestations for this round are complete."
 
-> "The ledger doesn't stop the agent from being wrong. It makes it impossible
-> for the agent to be wrong *quietly*. Every input that led to that judgment is
-> fingerprinted in the record — so when someone asks six months later why this
-> round was signed off, the answer is in the chain, not in someone's memory."
+And the harness overrules it:
 
-If you want that refusal to be a *guarantee* rather than a *tendency*, the fix
-is a quorum check in the harness that refuses to emit `run.completed` until N
-distinct shards carry attestations. That's the obvious next commit, and saying
-so is a better answer than pretending it's already there.
+```
+HARNESS DECISION: REFUSED BY HARNESS
+  decided by     : harness policy (the model does not get a vote)
+  reason         : 1 of 2 required attestations present; refusing to sign off
+```
 
----
+with the disagreement written into the chain as its own entry:
+
+```
+ 9  policy.refused   harness  {"attestations":1,"required":2,"decided_by":"harness",...}
+10  policy.override  harness  {"note":"model text signed off; harness refused and its decision stands"}
+```
+
+The model's prose still prints, under a heading that says **MODEL COMMENTARY
+(not the decision)**. It is commentary layered on a decision already taken.
+
+The line to say out loud:
+
+> "The model just told you this round was fine. It was wrong, and it didn't
+> matter — because the model doesn't get a vote. The harness counted, and the
+> count is what decides."
+
+Two further cases the policy catches, both mechanical: re-attesting the *same*
+shard twice still counts as one, and two differently-named shards carrying the
+same digest are refused, because duplicate content cannot stand in for
+independent contributions.
 
 ## 7. The bit that makes the ledger interesting rather than decorative
 
@@ -204,13 +232,19 @@ is the strongest thirty seconds available to you.
   editing the record after the fact, but the process that *wrote* it could have
   written a different one from the start. Nobody countersigns it. Real
   provenance needs an external witness — a second node, or a signature.
-- **The refusal in run 2 is a model tendency, not an enforced rule** (see §6).
+- **The threshold is a count, not an identity check.** The harness verifies
+  that N distinct shards were attested, not that N distinct *sites* sent
+  them. Nothing authenticates who contributed what.
 - **A shard is a hand-typed string, not real data.** No training happens here.
 - **One tool, one node.** The federation is not exercised; this runs on a local
   SuperLink, not across SuperNodes.
-- **The model endpoint is flaky.** It stalls intermittently. The harness retries
-  up to 3 times per turn and records every attempt, but a run can occasionally
-  take ~2.5 minutes instead of ~20 seconds.
+- **The model endpoint is flaky.** Multi-turn requests to it stall roughly a
+  third of the time (measured: 2 of 6 identical requests hung past 90s while
+  the other 4 returned in ~5s). The harness retries and records every attempt,
+  and because the verdict does not depend on the model, a dead provider now
+  costs only the commentary.
+- **It gives integrity, not privacy** (see §5). Do not let anyone leave the
+  room believing otherwise.
 
 ---
 
@@ -220,7 +254,7 @@ is the strongest thirty seconds available to you.
 | --- | --- |
 | 0:25 | "Somebody signed off on a training round six months ago. Ask them what data went into it. They don't know, and there's no way to find out." |
 | 1:30 | Live run (~20s, but see §7 — it can stall to ~2.5 min and recover). Narrate: the agent decides a shard needs fingerprinting → **the laptop, not the model, computes the digest** → both go into the chain. Show the head hash. |
-| 0:45 | Run 2. One shard, same question. It attests, then refuses to call the round reproducible and asks for the missing sites. |
+| 0:45 | Run 2. One shard, and push the model to sign off. It does. The harness refuses anyway and logs the disagreement. "The model doesn't get a vote." |
 | 0:30 | Whiteboard the chain: `chain[n] = sha256(chain[n-1] + entry[n])`. Edit the middle, the end breaks. |
 | 0:30 | What crosses the wire vs what doesn't (§5). Name the Flower primitives: AgentApp, SuperLink, run config, run events. |
 | 0:20 | Scale: "One node on a laptop. Same AgentApp, unchanged, is what runs on thirty hospitals' SuperNodes." |

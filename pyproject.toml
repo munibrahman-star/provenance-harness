@@ -28,3 +28,4 @@ agent.model = "/models/Qwen3.5-397B-A17B-FP8"
 agent.input = ""
 agent.tools = true
 agent.max-turns = 4
+agent.required-attestations = 2
