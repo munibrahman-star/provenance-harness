@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "provenance-harness"
+version = "1.0.0"
+description = "Tamper-evident provenance ledger for a Flower AgentApp run"
+license = { file = "LICENSE" }
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "flwr>=1.35.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.flwr.app]
+publisher = "munibrahman"
+fab-format-version = 1
+flwr-version-target = "1.35.0"
+
+[tool.flwr.app.components]
+agentapp = "provenance_harness.agent_app:app"
+
+[tool.flwr.app.config]
+agent.model = "/models/Qwen3.5-397B-A17B-FP8"
+agent.input = ""
+agent.tools = true
+agent.max-turns = 4
