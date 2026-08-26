@@ -12,6 +12,9 @@ dependencies = [
     "flwr>=1.35.0",
 ]
 
+[project.scripts]
+verify = "provenance_harness.verify:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["."]
 
@@ -29,3 +32,4 @@ agent.input = ""
 agent.tools = true
 agent.max-turns = 4
 agent.required-attestations = 2
+agent.ledger-dir = ""

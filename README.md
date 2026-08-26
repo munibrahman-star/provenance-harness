@@ -15,6 +15,7 @@ end of the run, emitted as `provenance.ledger.entry` run events, and stored in
 | `provenance_harness/harness.py` | the agent loop, ledger, tools — no Flower imports |
 | `provenance_harness/agent_app.py` | thin `AgentApp` wrapper around the loop |
 | `local_probe.py` | drives the same loop straight at an Open Responses endpoint, no SuperLink |
+| `provenance_harness/verify.py` | standalone ledger verifier — imports nothing from the app |
 
 ## Run
 
@@ -150,3 +151,80 @@ Because the verdict does not depend on the model, a provider failure *after*
 attestations have been gathered costs only the prose: the harness records
 `commentary.unavailable` and decides anyway. A provider failure with nothing
 attested raises, since such a run learned nothing.
+
+## Verify it yourself
+
+You do not have to take this repository's word for anything, and you do not
+have to have watched the run happen.
+
+Every run writes its ledger to `~/.flwr/provenance-ledgers/<run-id>.jsonl`, one
+entry per line, and prints the path when it finishes. Check it with:
+
+```bash
+uv run verify ~/.flwr/provenance-ledgers/<run-id>.jsonl
+```
+
+Exit status is `0` if the chain is intact and `1` if it is not, so this drops
+into CI unchanged.
+
+### What the verifier is
+
+`provenance_harness/verify.py` imports nothing from the rest of this package
+— not the `Ledger` class, not the canonicalizer, not the chain rule. It uses
+`hashlib`, `json`, `sys` and `pathlib`, and nothing else. The rule is
+reimplemented from this specification:
+
+```
+chain[n]  = sha256( chain[n-1] || canonical_json(entry[n] minus "chain") )
+chain[-1] = "0" * 64
+canonical_json = json.dumps(sort_keys=True, separators=(",", ":"))
+```
+
+That independence is the point. A verifier that imported the writer's own
+chain code would confirm the writer agrees with itself, which proves nothing.
+If you distrust both, the specification above is short enough to reimplement
+in any language in about fifteen lines, and it should give you the same
+answer.
+
+### Check that it actually catches things
+
+Do not believe a verifier you have only seen say "VERIFIED". Break a ledger
+and watch it complain:
+
+```bash
+cp ~/.flwr/provenance-ledgers/<run-id>.jsonl /tmp/tampered.jsonl
+# change a single character anywhere in the middle of the file
+uv run verify /tmp/tampered.jsonl; echo "exit=$?"
+```
+
+It names the first bad entry, prints the hash it recomputed next to the hash
+it found, and tells you how much of the file still stands:
+
+```
+  first bad entry : #5  (kind=tool.call actor=harness)
+  expected        : 9c13f58eafcb2078243d41a70c1872d4c3605f5b5fe89e25b4b0ae27b494496f
+  found           : e74fdbe8361a91c1fa2ab8fffee66f10dbbcb17c81c968036f521cbfeb12243c
+  why             : this entry's contents do not hash to its recorded chain value
+  TRUSTWORTHY     : entries 0..4 (5 of 12) verify against genesis
+  NOT TRUSTWORTHY : entries 5..11 (7 of 12) -- everything at or after the break
+```
+
+It distinguishes two kinds of damage. An **edited** entry no longer hashes to
+its recorded chain value. A **relinked** chain — an entry deleted, or one
+spliced in — has a recorded parent hash that is not the previous entry's chain
+value. Deleting an entry outright is caught as the second kind.
+
+The last entry is not a special case. Rewriting a run's `verdict` from
+`REFUSED` to `SIGNED_OFF` — the edit someone would actually want to make —
+is caught at that entry like any other.
+
+### What this does not prove
+
+A hash chain proves nobody altered the entries after they were written. It
+does not prove the process that wrote them was honest at the time. Nothing
+external countersigns this file, so a writer that was lying from the first
+entry would produce a chain that verifies perfectly. Anchoring the head hash
+somewhere outside this machine — a second node, a signature, a transparency
+log — is what would close that gap, and this does not do it yet. The verifier
+prints that caveat on every failure rather than letting a green tick imply
+more than it earns.
