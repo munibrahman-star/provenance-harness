@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import time
 from typing import Any, Callable
 
 GENESIS = "0" * 64
@@ -93,9 +94,11 @@ class Ledger:
     so editing any earlier entry invalidates every hash after it.
     """
 
-    def __init__(self, emit: EmitFn | None = None, clock: Callable[[], float] | None = None) -> None:
-        import time
-
+    def __init__(
+        self,
+        emit: EmitFn | None = None,
+        clock: Callable[[], float] | None = None,
+    ) -> None:
         self._emit = emit
         self._clock = clock or time.time
         self._entries: list[dict[str, Any]] = []
@@ -325,6 +328,81 @@ def extract_tool_calls(response: dict[str, Any]) -> tuple[list[dict[str, Any]], 
 
 
 # ---------------------------------------------------------------------------
+# Provider failure handling
+# ---------------------------------------------------------------------------
+
+MAX_ATTEMPTS_PER_TURN = 3
+RETRY_BACKOFF_SECONDS = 2.0
+
+
+def provider_error(response: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the provider's error object, or None if the response is usable.
+
+    A failing model task does *not* raise: it replies with an ordinary Open
+    Responses payload carrying an `error` object. Treating that as a normal
+    empty response would let a failed run be recorded as a completed one,
+    which is precisely the thing this app exists to prevent.
+    """
+    error = response.get("error")
+    if isinstance(error, dict):
+        return error
+    if error:
+        return {"message": str(error)}
+    if response.get("status") == "failed":
+        return {"code": "status_failed", "message": "provider reported status=failed"}
+    if not output_items(response):
+        return {"code": "empty_output", "message": "provider returned no output items"}
+    return None
+
+
+def create_with_retry(
+    create: CreateFn,
+    request: dict[str, Any],
+    ledger: Ledger,
+    *,
+    turn: int,
+    attempts: int = MAX_ATTEMPTS_PER_TURN,
+    sleep: Callable[[float], None] = time.sleep,
+    logger: Callable[[str], None] = lambda _msg: None,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Call the provider, retrying transient failures. Every attempt is logged.
+
+    Returns ``(response, None)`` on success or ``(None, error)`` once the
+    attempts are exhausted.
+    """
+    last_error: dict[str, Any] = {"message": "no attempt was made"}
+
+    for attempt in range(1, attempts + 1):
+        try:
+            response = create(request)
+            error = provider_error(response)
+            if error is None:
+                if attempt > 1:
+                    ledger.append(
+                        "model.recovered", "harness", turn=turn, attempt=attempt
+                    )
+                return response, None
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            error = {"code": "transport_error", "message": str(err)[:400]}
+
+        last_error = error
+        ledger.append(
+            "model.error",
+            "provider",
+            turn=turn,
+            attempt=attempt,
+            of_attempts=attempts,
+            error=str(error.get("message", error))[:300],
+            code=str(error.get("code", "")),
+        )
+        logger(f"turn {turn} attempt {attempt}/{attempts} failed: {error}")
+        if attempt < attempts:
+            sleep(RETRY_BACKOFF_SECONDS * attempt)
+
+    return None, last_error
+
+
+# ---------------------------------------------------------------------------
 # The harness loop
 # ---------------------------------------------------------------------------
 
@@ -377,10 +455,10 @@ def run_harness(  # pylint: disable=too-many-branches,too-many-locals,too-many-s
         )
         logger(f"turn {turn}/{max_turns} -> model")
 
-        try:
-            response = create(request)
-        except Exception as err:  # pylint: disable=broad-exception-caught
-            ledger.append("model.error", "provider", turn=turn, error=str(err)[:400])
+        response, error = create_with_retry(
+            create, request, ledger, turn=turn, logger=logger
+        )
+        if response is None:
             if use_tools:
                 # Some providers reject tool schemas outright; degrade, don't die.
                 use_tools = False
@@ -388,11 +466,17 @@ def run_harness(  # pylint: disable=too-many-branches,too-many-locals,too-many-s
                     "harness.degraded",
                     "harness",
                     turn=turn,
-                    reason="provider rejected the request with tools; retrying tool-free",
+                    reason="provider failed with tools attached; retrying tool-free",
                 )
                 logger(f"turn {turn} failed with tools; retrying tool-free")
                 continue
-            raise
+            # Nothing left to try. Fail loudly so the run is recorded as failed
+            # rather than completing with an empty answer.
+            ledger.append("run.failed", "harness", turn=turn, error=str(error)[:300])
+            raise RuntimeError(
+                f"Model provider failed on turn {turn} after "
+                f"{MAX_ATTEMPTS_PER_TURN} attempts: {error}"
+            )
 
         produced = output_items(response)
         calls, recovered = extract_tool_calls(response)

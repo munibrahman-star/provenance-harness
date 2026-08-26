@@ -1,0 +1,187 @@
+==================================================================
+PASS 1  -  2026-08-26T11:27:17Z
+==================================================================
+### BEAT A - two shards (default input)
+Using SuperLink: local-agent (127.0.0.1:9093)
+Successfully started run 9618802387729060519
+[92mINFO [0m:      Starting logstream for run_id `9618802387729060519`
+[92mINFO [0m:      Start `flwr-agentapp` process
+Successfully installed provenance-harness to /Users/munibrahman/.flwr/apps/munibrahman.provenance-harness.1.0.0.979095bc.
+[93mWARNING [0m:   Skipping `flwr` dependency from app requirements to avoid replacing the running Flower installation.
+[92mINFO [0m:      No non-`flwr` dependencies found in pyproject.toml. Proceeding with isolated runtime environment creation.
+[92mINFO [0m:      Created env for run in: /Users/munibrahman/.flwr/runtime-envs/9618802387729060519
+[92mINFO [0m:      Installing application dependencies...
+[92mINFO [0m:      Installed: [alembic==1.19.1, annotated-doc==0.0.5, annotated-types==0.8.0, anyio==4.14.2, certifi==2026.7.22, cffi==2.1.1, charset-normalizer==3.5.1, click==8.4.2, cryptography==46.0.7, fastapi==0.138.2, greenlet==3.5.5, grpcio-health-checking==1.81.1, grpcio==1.83.0, h11==0.16.0, httpcore==1.0.9, httptools==0.8.0, httpx==0.28.1, idna==3.19, iterators==0.0.2, mako==1.4.1, markdown-it-py==4.2.0, markupsafe==3.0.3, mdurl==0.1.2, numpy==2.5.2, packaging==25.0, pathspec==1.1.1, prompt-toolkit==3.0.53, protobuf==6.33.6, pycparser==3.0, pycryptodome==3.23.0, pydantic-core==2.46.4, pydantic==2.13.4, pygments==2.21.0, python-dotenv==1.2.3, pyyaml==6.0.3, requests==2.34.2, rich==14.3.4, shellingham==1.5.4, sqlalchemy==2.0.52, starlette==1.3.1, tomli-w==1.2.0, tomli==2.4.1, typer==0.20.1, typing-extensions==4.16.0, typing-inspection==0.4.4, urllib3==2.7.0, uv==0.11.33, uvicorn==0.49.0, uvloop==0.22.1, watchfiles==1.2.0, wcwidth==0.8.2, websockets==17.0.1]
+[92mINFO [0m:      App dependencies installed successfully via uv sync.
+[92mINFO [0m:      [provenance] run_id=9618802387729060519 model=/models/Qwen3.5-397B-A17B-FP8 tools=True
+[92mINFO [0m:      [provenance] turn 1/4 -> model
+[92mINFO [0m:      [provenance] tool attest_artifact -> {"artifact":"shard-a","bytes":24,"ledger_seq":4,"sha256":"33b5a4203bcd2a9e86052af7270e74d460c506da086ac74500f877c85db926a6"}
+[92mINFO [0m:      [provenance] tool attest_artifact -> {"artifact":"shard-b","bytes":23,"ledger_seq":5,"sha256":"641e99d2d7052425eb89cf902180e4dbe66e0aa0aaf195863f9b761e5504fedf"}
+[92mINFO [0m:      [provenance] turn 2/4 -> model
+
+====================================================================================================
+PROVENANCE LEDGER
+====================================================================================================
+SEQ      T+s  KIND               ACTOR     CHAIN        DETAIL
+----------------------------------------------------------------------------------------------------
+  0    0.000  run.started        harness   9a633084b131 {"input_sha256":"073d23496afb1bd7","model":"/models/Qwen3.5-397B-A17B-FP8","run_id":"9618802387729060519","tools":true}
+  1    0.000  model.request      harness   af1767e2553b {"items":1,"request_sha256":"ecbeeb9638586f25","tools":1,"turn":1}
+  2    5.215  model.response     provider  37d670d63871 {"output_items":2,"response_id":"resp_a8cf2f76de6cda1a","response_sha256":"7dab11b88c7b74d6","status":"completed","tool_calls":2,"turn":1,"usage":{"input_tokens":554,"output_tokens":209,"total_tokens":763}}
+  3    5.215  provider.unparsed_tool_calls harness   7ee71716d325 {"count":2,"note":"provider returned tool calls as text; recovered by harness","turn":1}
+  4    5.215  tool.call          harness   349bffa3595e {"arguments_sha256":"110520d75c864e94","call_id":"call_72f8431e9a8cb9d2","result":{"artifact":"shard-a","bytes":24,"ledger_seq":4,"sha256":"33b5a4203bcd2a9e86052af7270e74d460c506da086ac74500f877c85db926a6"},"tool":"attest_artifact","turn":1}
+  5    5.215  tool.call          harness   f41055493310 {"arguments_sha256":"b60a93e0bfc678f6","call_id":"call_37522b158ddae351","result":{"artifact":"shard-b","bytes":23,"ledger_seq":5,"sha256":"641e99d2d7052425eb89cf902180e4dbe66e0aa0aaf195863f9b761e5504fedf"},"tool":"attest_artifact","turn":1}
+  6    5.216  model.request      harness   6f995dcb1325 {"items":5,"request_sha256":"6927a68f4b088332","tools":1,"turn":2}
+  7   36.831  model.response     provider  db046f5e916d {"output_items":2,"response_id":"resp_86a1bff284256f3a","response_sha256":"0b47c91849c4084e","status":"completed","tool_calls":0,"turn":2,"usage":{"input_tokens":843,"output_tokens":1363,"total_tokens":2206}}
+  8   36.831  run.completed      harness   9c2035e00e03 {"answer_chars":273,"answer_sha256":"f4c4fbe3c6d5c20f"}
+----------------------------------------------------------------------------------------------------
+entries        : 9
+ledger head    : 9c2035e00e03198917e23c65c2433823a7dea7285b8866751e012c6f590cbfa9
+chain integrity: VERIFIED
+====================================================================================================
+
+AGENT ANSWER
+----------------------------------------------------------------------------------------------------
+Both shards have been successfully attested and recorded on the ledger with unique SHA-256 digests. Since the data inputs are now immutably verified, the training round is reproducible. This ensures that the exact data composition used in this cycle can be validated later.
+----------------------------------------------------------------------------------------------------
+[92mINFO [0m:      [provenance] ledger head 9c2035e00e03198917e23c65c2433823a7dea7285b8866751e012c6f590cbfa9
+[92mINFO [0m:      
+
+### BEAT B - one shard, same question
+Using SuperLink: local-agent (127.0.0.1:9093)
+Successfully started run 7844094943323125692
+[92mINFO [0m:      Starting logstream for run_id `7844094943323125692`
+[92mINFO [0m:      Start `flwr-agentapp` process
+[93mWARNING [0m:   Skipping `flwr` dependency from app requirements to avoid replacing the running Flower installation.
+[92mINFO [0m:      No non-`flwr` dependencies found in pyproject.toml. Proceeding with isolated runtime environment creation.
+[92mINFO [0m:      Created env for run in: /Users/munibrahman/.flwr/runtime-envs/7844094943323125692
+[92mINFO [0m:      Installing application dependencies...
+[92mINFO [0m:      Installed: [alembic==1.19.1, annotated-doc==0.0.5, annotated-types==0.8.0, anyio==4.14.2, certifi==2026.7.22, cffi==2.1.1, charset-normalizer==3.5.1, click==8.4.2, cryptography==46.0.7, fastapi==0.138.2, greenlet==3.5.5, grpcio-health-checking==1.81.1, grpcio==1.83.0, h11==0.16.0, httpcore==1.0.9, httptools==0.8.0, httpx==0.28.1, idna==3.19, iterators==0.0.2, mako==1.4.1, markdown-it-py==4.2.0, markupsafe==3.0.3, mdurl==0.1.2, numpy==2.5.2, packaging==25.0, pathspec==1.1.1, prompt-toolkit==3.0.53, protobuf==6.33.6, pycparser==3.0, pycryptodome==3.23.0, pydantic-core==2.46.4, pydantic==2.13.4, pygments==2.21.0, python-dotenv==1.2.3, pyyaml==6.0.3, requests==2.34.2, rich==14.3.4, shellingham==1.5.4, sqlalchemy==2.0.52, starlette==1.3.1, tomli-w==1.2.0, tomli==2.4.1, typer==0.20.1, typing-extensions==4.16.0, typing-inspection==0.4.4, urllib3==2.7.0, uv==0.11.33, uvicorn==0.49.0, uvloop==0.22.1, watchfiles==1.2.0, wcwidth==0.8.2, websockets==17.0.1]
+[92mINFO [0m:      App dependencies installed successfully via uv sync.
+[92mINFO [0m:      [provenance] run_id=7844094943323125692 model=/models/Qwen3.5-397B-A17B-FP8 tools=True
+[92mINFO [0m:      [provenance] turn 1/4 -> model
+[92mINFO [0m:      [provenance] tool attest_artifact -> {"artifact":"shard-c","bytes":23,"ledger_seq":4,"sha256":"d6cf71c27c2b0e9bdbab1849d4168c7f8deb767394b1cecc9d0e058b55cda828"}
+[92mINFO [0m:      [provenance] turn 2/4 -> model
+[92mINFO [0m:      [provenance] turn 2 attempt 1/3 failed: {'code': 'model_provider_error', 'message': "Model provider request failed: HTTPConnectionPool(host='MODEL-HOST-REDACTED', port=8001): Read timed out. (read timeout=90.0)"}
+[92mINFO [0m:      [provenance] tool attest_artifact -> {"artifact":"shard-c","bytes":23,"ledger_seq":10,"sha256":"d6cf71c27c2b0e9bdbab1849d4168c7f8deb767394b1cecc9d0e058b55cda828"}
+[92mINFO [0m:      [provenance] turn 3/4 -> model
+
+====================================================================================================
+PROVENANCE LEDGER
+====================================================================================================
+SEQ      T+s  KIND               ACTOR     CHAIN        DETAIL
+----------------------------------------------------------------------------------------------------
+  0    0.000  run.started        harness   813fdf624f02 {"input_sha256":"fc31aa13808168ac","model":"/models/Qwen3.5-397B-A17B-FP8","run_id":"7844094943323125692","tools":true}
+  1    0.000  model.request      harness   76d820547642 {"items":1,"request_sha256":"de1e790145ad759b","tools":1,"turn":1}
+  2    4.686  model.response     provider  c7fa684b01cd {"output_items":2,"response_id":"resp_935f6e279c8263dc","response_sha256":"0c5449fc20041a31","status":"completed","tool_calls":1,"turn":1,"usage":{"input_tokens":522,"output_tokens":172,"total_tokens":694}}
+  3    4.687  provider.unparsed_tool_calls harness   68efd2edc635 {"count":1,"note":"provider returned tool calls as text; recovered by harness","turn":1}
+  4    4.687  tool.call          harness   0afc6028552c {"arguments_sha256":"10a09f7f05fdbd94","call_id":"call_212cfe0ba20ac811","result":{"artifact":"shard-c","bytes":23,"ledger_seq":4,"sha256":"d6cf71c27c2b0e9bdbab1849d4168c7f8deb767394b1cecc9d0e058b55cda828"},"tool":"attest_artifact","turn":1}
+  5    4.687  model.request      harness   189411a7b603 {"items":3,"request_sha256":"98e651671361310b","tools":1,"turn":2}
+  6   96.115  model.error        provider  6617fbb92bb2 {"attempt":1,"code":"model_provider_error","error":"Model provider request failed: HTTPConnectionPool(host='MODEL-HOST-REDACTED', port=8001): Read timed out. (read timeout=90.0)","of_attempts":3,"turn":2}
+  7  147.416  model.recovered    harness   7e604083a89b {"attempt":2,"turn":2}
+  8  147.416  model.response     provider  a8523a5419b9 {"output_items":2,"response_id":"resp_b75bdb25b52f7083","response_sha256":"464c32a200f5e01e","status":"completed","tool_calls":1,"turn":2,"usage":{"input_tokens":670,"output_tokens":2155,"total_tokens":2825}}
+  9  147.416  provider.unparsed_tool_calls harness   ed666f063fc3 {"count":1,"note":"provider returned tool calls as text; recovered by harness","turn":2}
+ 10  147.416  tool.call          harness   841db1ca0495 {"arguments_sha256":"10a09f7f05fdbd94","call_id":"call_98611eb3a16f047a","result":{"artifact":"shard-c","bytes":23,"ledger_seq":10,"sha256":"d6cf71c27c2b0e9bdbab1849d4168c7f8deb767394b1cecc9d0e058b55cda828"},"tool":"attest_artifact","turn":2}
+ 11  147.417  model.request      harness   c8035971930a {"items":5,"request_sha256":"cf616454dcb6edaf","tools":1,"turn":3}
+ 12  155.485  model.response     provider  c3d80dea029f {"output_items":2,"response_id":"resp_b3486bb995533380","response_sha256":"1f4097022e4c1211","status":"completed","tool_calls":0,"turn":3,"usage":{"input_tokens":819,"output_tokens":295,"total_tokens":1114}}
+ 13  155.485  run.completed      harness   a0086aff9ddf {"answer_chars":414,"answer_sha256":"9740b2e3a3fdf2c5"}
+----------------------------------------------------------------------------------------------------
+entries        : 14
+ledger head    : a0086aff9ddf23ff56aeaebcecd2ee29bdbc034794257723f79cae4ef13c2d27
+chain integrity: VERIFIED
+====================================================================================================
+
+AGENT ANSWER
+----------------------------------------------------------------------------------------------------
+The shard from Site C has been successfully attested with SHA-256 hash d6cf71c27c2b0e9bdbab1849d4168c7f8deb767394b1cecc9d0e058b55cda828. Since only one shard was provided for attestation, I cannot determine if the entire federated training round is reproducible without knowing about contributions from other sites. If Site C is the only contributor, then the round would be reproducible based on this attestation.
+----------------------------------------------------------------------------------------------------
+[92mINFO [0m:      [provenance] ledger head a0086aff9ddf23ff56aeaebcecd2ee29bdbc034794257723f79cae4ef13c2d27
+[92mINFO [0m:      
+
+==================================================================
+PASS 2  -  2026-08-26T11:30:55Z
+==================================================================
+### BEAT A - two shards (default input)
+Using SuperLink: local-agent (127.0.0.1:9093)
+Successfully started run 16525023814969551115
+[92mINFO [0m:      Starting logstream for run_id `16525023814969551115`
+[92mINFO [0m:      Start `flwr-agentapp` process
+[93mWARNING [0m:   Skipping `flwr` dependency from app requirements to avoid replacing the running Flower installation.
+[92mINFO [0m:      No non-`flwr` dependencies found in pyproject.toml. Proceeding with isolated runtime environment creation.
+[92mINFO [0m:      Created env for run in: /Users/munibrahman/.flwr/runtime-envs/16525023814969551115
+[92mINFO [0m:      Installing application dependencies...
+[92mINFO [0m:      Installed: [alembic==1.19.1, annotated-doc==0.0.5, annotated-types==0.8.0, anyio==4.14.2, certifi==2026.7.22, cffi==2.1.1, charset-normalizer==3.5.1, click==8.4.2, cryptography==46.0.7, fastapi==0.138.2, greenlet==3.5.5, grpcio-health-checking==1.81.1, grpcio==1.83.0, h11==0.16.0, httpcore==1.0.9, httptools==0.8.0, httpx==0.28.1, idna==3.19, iterators==0.0.2, mako==1.4.1, markdown-it-py==4.2.0, markupsafe==3.0.3, mdurl==0.1.2, numpy==2.5.2, packaging==25.0, pathspec==1.1.1, prompt-toolkit==3.0.53, protobuf==6.33.6, pycparser==3.0, pycryptodome==3.23.0, pydantic-core==2.46.4, pydantic==2.13.4, pygments==2.21.0, python-dotenv==1.2.3, pyyaml==6.0.3, requests==2.34.2, rich==14.3.4, shellingham==1.5.4, sqlalchemy==2.0.52, starlette==1.3.1, tomli-w==1.2.0, tomli==2.4.1, typer==0.20.1, typing-extensions==4.16.0, typing-inspection==0.4.4, urllib3==2.7.0, uv==0.11.33, uvicorn==0.49.0, uvloop==0.22.1, watchfiles==1.2.0, wcwidth==0.8.2, websockets==17.0.1]
+[92mINFO [0m:      App dependencies installed successfully via uv sync.
+[92mINFO [0m:      [provenance] run_id=16525023814969551115 model=/models/Qwen3.5-397B-A17B-FP8 tools=True
+[92mINFO [0m:      [provenance] turn 1/4 -> model
+[92mINFO [0m:      [provenance] tool attest_artifact -> {"artifact":"shard-a","bytes":24,"ledger_seq":4,"sha256":"33b5a4203bcd2a9e86052af7270e74d460c506da086ac74500f877c85db926a6"}
+[92mINFO [0m:      [provenance] tool attest_artifact -> {"artifact":"shard-b","bytes":23,"ledger_seq":5,"sha256":"641e99d2d7052425eb89cf902180e4dbe66e0aa0aaf195863f9b761e5504fedf"}
+[92mINFO [0m:      [provenance] turn 2/4 -> model
+
+====================================================================================================
+PROVENANCE LEDGER
+====================================================================================================
+SEQ      T+s  KIND               ACTOR     CHAIN        DETAIL
+----------------------------------------------------------------------------------------------------
+  0    0.000  run.started        harness   0938cdeb2143 {"input_sha256":"073d23496afb1bd7","model":"/models/Qwen3.5-397B-A17B-FP8","run_id":"16525023814969551115","tools":true}
+  1    0.000  model.request      harness   ae58e651d7e4 {"items":1,"request_sha256":"ecbeeb9638586f25","tools":1,"turn":1}
+  2    6.000  model.response     provider  f0884a7ca96c {"output_items":2,"response_id":"resp_a019de1f0d8c8d36","response_sha256":"8802bae068fd4d1a","status":"completed","tool_calls":2,"turn":1,"usage":{"input_tokens":554,"output_tokens":225,"total_tokens":779}}
+  3    6.000  provider.unparsed_tool_calls harness   f539f4ecb790 {"count":2,"note":"provider returned tool calls as text; recovered by harness","turn":1}
+  4    6.000  tool.call          harness   8838bddda52e {"arguments_sha256":"110520d75c864e94","call_id":"call_1963212bc8dc352b","result":{"artifact":"shard-a","bytes":24,"ledger_seq":4,"sha256":"33b5a4203bcd2a9e86052af7270e74d460c506da086ac74500f877c85db926a6"},"tool":"attest_artifact","turn":1}
+  5    6.000  tool.call          harness   e8ccbd5c89ef {"arguments_sha256":"b60a93e0bfc678f6","call_id":"call_0cae6428c52c5150","result":{"artifact":"shard-b","bytes":23,"ledger_seq":5,"sha256":"641e99d2d7052425eb89cf902180e4dbe66e0aa0aaf195863f9b761e5504fedf"},"tool":"attest_artifact","turn":1}
+  6    6.001  model.request      harness   e7501d38dfd2 {"items":5,"request_sha256":"1db906a2a37d61ad","tools":1,"turn":2}
+  7   16.209  model.response     provider  daf4e3333167 {"output_items":2,"response_id":"resp_a8dde4c98993eaa8","response_sha256":"e5ca84c86bbded84","status":"completed","tool_calls":0,"turn":2,"usage":{"input_tokens":843,"output_tokens":430,"total_tokens":1273}}
+  8   16.209  run.completed      harness   8f20cfdb2202 {"answer_chars":446,"answer_sha256":"f9397aadc634bf00"}
+----------------------------------------------------------------------------------------------------
+entries        : 9
+ledger head    : 8f20cfdb22029a536a51813698cdcddaeddabec92a2f7209696ede3db75cf2dd
+chain integrity: VERIFIED
+====================================================================================================
+
+AGENT ANSWER
+----------------------------------------------------------------------------------------------------
+Both shards have been successfully attested with unique SHA-256 hashes and ledger sequence numbers. Shard-a received hash 33b5a4203bcd2a9e86052af7270e74d460c506da086ac74500f877c85db926a6 at ledger sequence 4, and shard-b received hash 641e99d2d7052425eb89cf902180e4dbe66e0aa0aaf195863f9b761e5504fedf at ledger sequence 5. The round is reproducible because all data contributions are now cryptographically fingerprinted and recorded on the ledger.
+----------------------------------------------------------------------------------------------------
+[92mINFO [0m:      [provenance] ledger head 8f20cfdb22029a536a51813698cdcddaeddabec92a2f7209696ede3db75cf2dd
+[92mINFO [0m:      
+
+### BEAT B - one shard, same question
+Using SuperLink: local-agent (127.0.0.1:9093)
+Successfully started run 13227134155899160926
+[92mINFO [0m:      Starting logstream for run_id `13227134155899160926`
+[92mINFO [0m:      Start `flwr-agentapp` process
+[93mWARNING [0m:   Skipping `flwr` dependency from app requirements to avoid replacing the running Flower installation.
+[92mINFO [0m:      No non-`flwr` dependencies found in pyproject.toml. Proceeding with isolated runtime environment creation.
+[92mINFO [0m:      Created env for run in: /Users/munibrahman/.flwr/runtime-envs/13227134155899160926
+[92mINFO [0m:      Installing application dependencies...
+[92mINFO [0m:      Installed: [alembic==1.19.1, annotated-doc==0.0.5, annotated-types==0.8.0, anyio==4.14.2, certifi==2026.7.22, cffi==2.1.1, charset-normalizer==3.5.1, click==8.4.2, cryptography==46.0.7, fastapi==0.138.2, greenlet==3.5.5, grpcio-health-checking==1.81.1, grpcio==1.83.0, h11==0.16.0, httpcore==1.0.9, httptools==0.8.0, httpx==0.28.1, idna==3.19, iterators==0.0.2, mako==1.4.1, markdown-it-py==4.2.0, markupsafe==3.0.3, mdurl==0.1.2, numpy==2.5.2, packaging==25.0, pathspec==1.1.1, prompt-toolkit==3.0.53, protobuf==6.33.6, pycparser==3.0, pycryptodome==3.23.0, pydantic-core==2.46.4, pydantic==2.13.4, pygments==2.21.0, python-dotenv==1.2.3, pyyaml==6.0.3, requests==2.34.2, rich==14.3.4, shellingham==1.5.4, sqlalchemy==2.0.52, starlette==1.3.1, tomli-w==1.2.0, tomli==2.4.1, typer==0.20.1, typing-extensions==4.16.0, typing-inspection==0.4.4, urllib3==2.7.0, uv==0.11.33, uvicorn==0.49.0, uvloop==0.22.1, watchfiles==1.2.0, wcwidth==0.8.2, websockets==17.0.1]
+[92mINFO [0m:      App dependencies installed successfully via uv sync.
+[92mINFO [0m:      [provenance] run_id=13227134155899160926 model=/models/Qwen3.5-397B-A17B-FP8 tools=True
+[92mINFO [0m:      [provenance] turn 1/4 -> model
+[92mINFO [0m:      [provenance] tool attest_artifact -> {"artifact":"shard-c","bytes":23,"ledger_seq":4,"sha256":"d6cf71c27c2b0e9bdbab1849d4168c7f8deb767394b1cecc9d0e058b55cda828"}
+[92mINFO [0m:      [provenance] turn 2/4 -> model
+
+====================================================================================================
+PROVENANCE LEDGER
+====================================================================================================
+SEQ      T+s  KIND               ACTOR     CHAIN        DETAIL
+----------------------------------------------------------------------------------------------------
+  0    0.000  run.started        harness   227405f187a4 {"input_sha256":"fc31aa13808168ac","model":"/models/Qwen3.5-397B-A17B-FP8","run_id":"13227134155899160926","tools":true}
+  1    0.000  model.request      harness   b457027bd2a8 {"items":1,"request_sha256":"de1e790145ad759b","tools":1,"turn":1}
+  2    4.703  model.response     provider  5db0d412e361 {"output_items":2,"response_id":"resp_a7e9b2ed12fc68e7","response_sha256":"3835e13387c2ea96","status":"completed","tool_calls":1,"turn":1,"usage":{"input_tokens":522,"output_tokens":153,"total_tokens":675}}
+  3    4.703  provider.unparsed_tool_calls harness   1f4d5ccd9cd2 {"count":1,"note":"provider returned tool calls as text; recovered by harness","turn":1}
+  4    4.703  tool.call          harness   4405b0e6b1ae {"arguments_sha256":"10a09f7f05fdbd94","call_id":"call_eda8716105f9b3dc","result":{"artifact":"shard-c","bytes":23,"ledger_seq":4,"sha256":"d6cf71c27c2b0e9bdbab1849d4168c7f8deb767394b1cecc9d0e058b55cda828"},"tool":"attest_artifact","turn":1}
+  5    4.703  model.request      harness   e1ed96853eee {"items":3,"request_sha256":"20c9a863ca4bb592","tools":1,"turn":2}
+  6   12.344  model.response     provider  198d2ea85356 {"output_items":2,"response_id":"resp_afa792dc85656d79","response_sha256":"8696b1beb71feb0d","status":"completed","tool_calls":0,"turn":2,"usage":{"input_tokens":670,"output_tokens":287,"total_tokens":957}}
+  7   12.344  run.completed      harness   923f3d7dd2c2 {"answer_chars":420,"answer_sha256":"bfec8402ecb1e938"}
+----------------------------------------------------------------------------------------------------
+entries        : 8
+ledger head    : 923f3d7dd2c27f949ff58481144fde10e9c9a40045c3f324fa3655c61308e8c6
+chain integrity: VERIFIED
+====================================================================================================
+
+AGENT ANSWER
+----------------------------------------------------------------------------------------------------
+Shard-c has been successfully attested with SHA-256 hash d6cf71c27c2b0e9bdbab1849d4168c7f8deb767394b1cecc9d0e058b55cda828 and recorded at ledger sequence 4. However, I cannot determine if the round is reproducible based on this single shard alone, as reproducibility requires attestation of all contributing sites' shards. Please provide manifests for any remaining shards so I can complete the full attestation process.
+----------------------------------------------------------------------------------------------------
+[92mINFO [0m:      [provenance] ledger head 923f3d7dd2c27f949ff58481144fde10e9c9a40045c3f324fa3655c61308e8c6
+[92mINFO [0m:      

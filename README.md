@@ -22,7 +22,8 @@ Point the SuperLink at an Open Responses-compatible endpoint and start it:
 
 ```bash
 export FLWR_MODEL_API_ENDPOINT='http://<host>:8001/v1/responses'
-unset FLWR_MODEL_API_KEY        # only needed for api.flower.ai
+export FLWR_MODEL_API_TIMEOUT=90   # fail a stalled request fast enough to retry
+unset FLWR_MODEL_API_KEY           # only needed for api.flower.ai
 uv run flower-superlink --insecure
 ```
 
@@ -56,3 +57,16 @@ vLLM only emits Open Responses `function_call` items when it is started with
 `<tool_call>` block as assistant text. The harness prefers native `function_call` items
 and falls back to parsing that text, recording a `provider.unparsed_tool_calls` ledger
 entry whenever it has to. Both the Qwen XML and Hermes JSON dialects are handled.
+
+## Provider failures
+
+A failing model task does not raise — it replies with an ordinary Open
+Responses payload carrying an `error` object. The harness checks for that
+explicitly (`provider_error`), retries up to `MAX_ATTEMPTS_PER_TURN` times with
+backoff, and records every attempt in the ledger as `model.error` /
+`model.recovered`. If the attempts are exhausted the run raises and is recorded
+as `run.failed` rather than completing with an empty answer.
+
+Keep `FLWR_MODEL_API_TIMEOUT` well below 300s (the AgentApp's reply timeout) so
+a stalled request surfaces as a retryable error instead of taking the whole
+task down with it.

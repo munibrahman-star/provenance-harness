@@ -177,6 +177,25 @@ worked, and the record says it degraded.** A provenance system that only logs
 the happy path is worthless. Judges who have operated real systems will
 recognise that instantly, so don't hide it — lead with it.
 
+There is a second, better example of the same idea, and it happened for real
+during testing. The remote model endpoint intermittently stalls. On one run the
+turn-2 request hung until it hit the provider timeout, and the ledger shows
+exactly that:
+
+```
+6   96.115  model.error      provider  {"attempt":1,"code":"model_provider_error","error":"...read timed out"}
+7  147.416  model.recovered  harness   {"attempt":2,"turn":2}
+```
+
+The harness retried, the second attempt worked, and the run completed with a
+verified chain. **The stall is in the permanent record.** Nobody reading that
+ledger later can be told the round went smoothly.
+
+If the endpoint stalls during your live demo, the run takes ~2.5 minutes
+instead of ~20 seconds and then succeeds. Don't panic and don't kill it —
+scroll back to the `model.error` / `model.recovered` pair and point at it. It
+is the strongest thirty seconds available to you.
+
 ---
 
 ## 8. Honest limitations (pick one for your 15-second limitation slot)
@@ -189,6 +208,9 @@ recognise that instantly, so don't hide it — lead with it.
 - **A shard is a hand-typed string, not real data.** No training happens here.
 - **One tool, one node.** The federation is not exercised; this runs on a local
   SuperLink, not across SuperNodes.
+- **The model endpoint is flaky.** It stalls intermittently. The harness retries
+  up to 3 times per turn and records every attempt, but a run can occasionally
+  take ~2.5 minutes instead of ~20 seconds.
 
 ---
 
@@ -197,7 +219,7 @@ recognise that instantly, so don't hide it — lead with it.
 | Time | Beat |
 | --- | --- |
 | 0:25 | "Somebody signed off on a training round six months ago. Ask them what data went into it. They don't know, and there's no way to find out." |
-| 1:30 | Live run. Narrate: the agent decides a shard needs fingerprinting → **the laptop, not the model, computes the digest** → both go into the chain. Show the head hash. |
+| 1:30 | Live run (~20s, but see §7 — it can stall to ~2.5 min and recover). Narrate: the agent decides a shard needs fingerprinting → **the laptop, not the model, computes the digest** → both go into the chain. Show the head hash. |
 | 0:45 | Run 2. One shard, same question. It attests, then refuses to call the round reproducible and asks for the missing sites. |
 | 0:30 | Whiteboard the chain: `chain[n] = sha256(chain[n-1] + entry[n])`. Edit the middle, the end breaks. |
 | 0:30 | What crosses the wire vs what doesn't (§5). Name the Flower primitives: AgentApp, SuperLink, run config, run events. |
