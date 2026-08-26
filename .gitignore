@@ -5,3 +5,7 @@ __pycache__/
 .DS_Store
 superlink.log*
 *.fab
+
+# Speaking notes: kept in git, excluded from `flwr app publish` (which filters
+# the upload by .gitignore). Already-tracked files stay tracked.
+DEMO.md
