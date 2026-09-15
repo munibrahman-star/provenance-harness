@@ -1,10 +1,22 @@
 # provenance-harness
 
-**No claim crosses a node boundary without a source, and no conclusion is accepted
-without a human gate.**
+**A chain of custody for machine reasoning.** No claim crosses a node boundary
+without a source, and no conclusion is accepted without a human gate.
 
 A Flower **AgentApp** that keeps a tamper-evident provenance ledger of its own run.
-Built at the Flower Collaborative Agent Hackathon, Cambridge, August 2026.
+Built solo in a day at the Flower Collaborative Agent Hackathon, Cambridge,
+26 August 2026 (Track 1: SuperGrid). Apache-2.0.
+
+| | |
+| --- | --- |
+| Flower Hub | [`@munibrahman/provenance-harness`](https://flower.ai/apps/munibrahman/provenance-harness) v1.0.0 — publication verified by round-trip: `flwr new` returned every file byte-identical |
+| Model used | Qwen3.5 397B (`/models/Qwen3.5-397B-A17B-FP8`) on AMD Instinct MI300X |
+| Where Flower fits | [`docs/FLOWER_USAGE.md`](docs/FLOWER_USAGE.md) — every point of contact, including the two places where *not* using Flower was the design decision |
+| The argument | [`docs/pitch-deck.pdf`](docs/pitch-deck.pdf) |
+
+> **Why not a database with an audit log?** Because it is written and editable by
+> whoever runs the database. You would be trusting the record-keeper rather than
+> checking the record.
 
 Every step — each model request, each model response, each tool call — is appended to a
 hash chain: entry *n*'s `chain` is `sha256(chain[n-1] || canonical_json(entry_n))`.
