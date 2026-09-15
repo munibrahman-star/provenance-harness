@@ -3,9 +3,23 @@
 **A chain of custody for machine reasoning.** No claim crosses a node boundary
 without a source, and no conclusion is accepted without a human gate.
 
+### The problem
+
+Agent systems reason across many steps and several machines, and the record of how
+they got there lands in a log file. **Your audit log is written by the thing you are
+auditing.** So when someone asks, months later — *why did it decide that, and has
+anyone touched the record since?* — the honest answer is that you cannot tell. Logs
+can be edited, reordered or lost, and nothing inside the file will ever say so.
+
+In health, finance and public services, a conclusion without a defensible trail is
+worth nothing at all. This makes that question answerable.
+
+### What it is
+
 A Flower **AgentApp** that keeps a tamper-evident provenance ledger of its own run.
-Built solo in a day at the Flower Collaborative Agent Hackathon, Cambridge,
-26 August 2026 (Track 1: SuperGrid). Apache-2.0.
+Built solo in a day at the Flower Collaborative Agent Hackathon, held in the William
+Gates Building at the University of Cambridge, 26 August 2026 (Track 1: SuperGrid).
+Organised by Flower Labs with ARM, AMD and Amazon. Apache-2.0.
 
 | | |
 | --- | --- |
