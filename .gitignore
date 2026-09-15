@@ -13,3 +13,7 @@ DEMO.md
 # Ledgers and tamper copies are run artifacts. Also keeps them out of
 # `flwr app publish`, which otherwise uploads *.jsonl.
 *.jsonl
+
+# ...except the two committed sample ledgers, which exist so a reader can run
+# the verifier before installing anything.
+!examples/*.jsonl

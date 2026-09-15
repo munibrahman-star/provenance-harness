@@ -1,6 +1,10 @@
 # provenance-harness
 
+**No claim crosses a node boundary without a source, and no conclusion is accepted
+without a human gate.**
+
 A Flower **AgentApp** that keeps a tamper-evident provenance ledger of its own run.
+Built at the Flower Collaborative Agent Hackathon, Cambridge, August 2026.
 
 Every step — each model request, each model response, each tool call — is appended to a
 hash chain: entry *n*'s `chain` is `sha256(chain[n-1] || canonical_json(entry_n))`.
@@ -16,6 +20,23 @@ end of the run, emitted as `provenance.ledger.entry` run events, and stored in
 | `provenance_harness/agent_app.py` | thin `AgentApp` wrapper around the loop |
 | `local_probe.py` | drives the same loop straight at an Open Responses endpoint, no SuperLink |
 | `provenance_harness/verify.py` | standalone ledger verifier — imports nothing from the app |
+
+## Start here — 30 seconds, nothing installed
+
+`verify` is standalone: `hashlib`, `json`, `sys`, `pathlib`, and nothing else. Two
+ledgers from a real run are committed under `examples/`, so you can test the claim
+before you install anything or trust anything.
+
+```bash
+python3 provenance_harness/verify.py examples/ledger.jsonl           # exit 0 — chain intact
+python3 provenance_harness/verify.py examples/ledger-tampered.jsonl  # exit 1 — names the first bad entry
+```
+
+The two files differ by a single character, inside a digest, in the middle of the
+run. That is the whole demonstration: an edit invisible to a reader is fatal to the
+chain, and the verifier tells you exactly how much of the file still stands.
+
+Running the agent itself needs a SuperLink and an Open Responses endpoint — below.
 
 ## Run
 
