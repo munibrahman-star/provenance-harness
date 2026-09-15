@@ -17,9 +17,9 @@ worth nothing at all. This makes that question answerable.
 ### What it is
 
 A Flower **AgentApp** that keeps a tamper-evident provenance ledger of its own run.
-Built solo in a day at the Flower Collaborative Agent Hackathon, held in the William
-Gates Building at the University of Cambridge, 26 August 2026 (Track 1: SuperGrid).
-Organised by Flower Labs with ARM, AMD and Amazon. Apache-2.0.
+Built solo in a day at the Flower Collaborative Agent Hackathon, 26 August 2026, at
+Cambridge University, organised by Flower Labs with ARM, AMD and Amazon
+(Track 1: SuperGrid). Apache-2.0.
 
 | | |
 | --- | --- |
